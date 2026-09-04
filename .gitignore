@@ -1,0 +1,33 @@
+# Environment: ignore live env files, keep example templates committed
+.env
+.env.local
+.env.production
+.env.development
+.env.production.local
+.env.development.local
+!.env.example
+!.env.local.example
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+out/
+cache/
+broadcast/
+dist/
+.next/
+
+# Local tooling / Vercel link state (sensitive project IDs / tokens)
+.vercel/
+.vercel_build_output/
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/

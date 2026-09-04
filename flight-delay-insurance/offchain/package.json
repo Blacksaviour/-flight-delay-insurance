@@ -1,0 +1,21 @@
+{
+  "name": "flight-delay-insurance-offchain",
+  "version": "1.0.0",
+  "description": "Off-chain proof pipeline for the flight-delay parametric insurance demo (BUIDL CTC 2026 Fall)",
+  "scripts": {
+    "check-chains": "tsx scripts/checkSupportedChains.ts",
+    "settle": "tsx scripts/settleFlightDelay.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@gluwa/usc-sdk": "0.18.0",
+    "dotenv": "^17.4.2",
+    "ethers": "6.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  }
+}

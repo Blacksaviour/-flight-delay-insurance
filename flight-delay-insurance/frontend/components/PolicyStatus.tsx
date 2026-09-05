@@ -5,6 +5,12 @@ import { useAccount } from "wagmi";
 
 import { usePolicy, usePolicyCount } from "@/lib/hooks";
 
+interface Policy {
+  status: number | string;
+  premium: number | string;
+  payoutAmount: number | string;
+}
+
 /**
  * Displays all policies and their status. Shows a specific policy by ID
  * or lists all policies owned by the connected wallet.

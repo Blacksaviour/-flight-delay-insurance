@@ -4,12 +4,7 @@
 import { useAccount } from "wagmi";
 
 import { usePolicy, usePolicyCount } from "@/lib/hooks";
-
-interface Policy {
-  status: number | string;
-  premium: number | string;
-  payoutAmount: number | string;
-}
+import type { Policy } from "@/lib/hooks";
 
 /**
  * Displays all policies and their status. Shows a specific policy by ID
@@ -50,8 +45,9 @@ export default function PolicyStatus() {
 }
 
 function PolicyRow({ policyId }: { policyId: bigint }) {
-  const { data: policy, isLoading, error } = usePolicy(policyId);
-    const statusLabels: Record<number, { label: string; color: string }> = {
+  const { data: rawPolicy, isLoading, error } = usePolicy(policyId);
+  const policy = rawPolicy as Policy | undefined;
+  const statusLabels: Record<number, { label: string; color: string }> = {
     0: { label: "Active", color: "bg-blue-500" },
     1: { label: "Triggered", color: "bg-yellow-500" },
     2: { label: "Paid", color: "bg-green-500" },

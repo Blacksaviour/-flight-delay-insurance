@@ -31,3 +31,5 @@ dist/
 *.swo
 .vscode/
 .idea/
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo

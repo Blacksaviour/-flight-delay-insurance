@@ -17,6 +17,15 @@ export const usdcAbi = mockUsdcAbi.abi as any;
 export const lpAbi = liquidityPoolAbi.abi as any;
 export const reporterAbi = flightDelayReporterAbi.abi as any;
 
+// Struct returned by PolicyManager.getPolicy()
+export interface Policy {
+  policyholder: `0x${string}`;
+  thresholdMinutes: bigint;
+  premium: bigint;
+  payoutAmount: bigint;
+  status: number;
+}
+
 // --- PolicyManager reads (Creditcoin) ---
 
 export function usePolicy(policyId: bigint | undefined) {

@@ -60,9 +60,9 @@ function PolicyRow({ policyId }: { policyId: bigint }) {
 
   if (isLoading || !policy) return null;
 
-  const statusInfo = statusLabels[Number(policy.status) as 0 | 1 | 2 | 3] || statusLabels[0];
-  const premiumUSDC = Number(policy.premium) / 1e6;
-  const payoutUSDC = Number(policy.payoutAmount) / 1e6;
+    const statusInfo = statusLabels[Number((policy as any).status)];
+  const premiumUSDC = Number((policy as any).premium) / 1e6;
+  const payoutUSDC = Number((policy as any).payoutAmount) / 1e6;
 
   return (
     <div className="grid grid-cols-5 gap-2 items-center p-3 bg-slate-800/30 rounded-lg text-sm">

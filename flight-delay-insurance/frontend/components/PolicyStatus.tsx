@@ -51,7 +51,7 @@ export default function PolicyStatus() {
 
 function PolicyRow({ policyId }: { policyId: bigint }) {
   const { data: policy, isLoading, error } = usePolicy(policyId);
-  const statusLabels = {
+    const statusLabels: Record<number, { label: string; color: string }> = {
     0: { label: "Active", color: "bg-blue-500" },
     1: { label: "Triggered", color: "bg-yellow-500" },
     2: { label: "Paid", color: "bg-green-500" },
@@ -60,9 +60,9 @@ function PolicyRow({ policyId }: { policyId: bigint }) {
 
   if (isLoading || !policy) return null;
 
-    const statusInfo = statusLabels[Number((policy as any).status)];
-  const premiumUSDC = Number((policy as any).premium) / 1e6;
-  const payoutUSDC = Number((policy as any).payoutAmount) / 1e6;
+  const statusInfo = statusLabels[Number(policy.status)] ?? { label: "Unknown", color: "bg-slate-500" };
+  const premiumUSDC = Number(policy.premium) / 1e6;
+  const payoutUSDC = Number(policy.payoutAmount) / 1e6;
 
   return (
     <div className="grid grid-cols-5 gap-2 items-center p-3 bg-slate-800/30 rounded-lg text-sm">

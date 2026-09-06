@@ -34,7 +34,7 @@ export default function TriggerPanel() {
 
   // The reporter transaction hash once confirmed — this is what the API route
   // uses to fetch the inclusion proof for the block that contains it.
-  const reportTxHash = reportReceiptHash || reportHash;
+  const reportTxHash = reportReceiptHash?.transactionHash || reportHash;
 
   const isLoading = isReporting || isSettling;
 

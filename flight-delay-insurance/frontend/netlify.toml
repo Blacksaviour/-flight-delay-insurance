@@ -1,5 +1,5 @@
 [build]
-  command = "env | grep NEXT_PUBLIC ; env | grep SEPOLIA ; env | grep CREDITCOIN ; npm run build"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]

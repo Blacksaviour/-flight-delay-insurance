@@ -19,6 +19,20 @@ import policyManagerArtifact from "../../../lib/abis/PolicyManager.json";
  * Env vars (server-side): SEPOLIA_RPC_URL, CREDITCOIN_RPC_URL, PROOF_BUILDER_URL,
  *   SEPOLIA_CHAIN_KEY, SETTLER_PRIVATE_KEY, NEXT_PUBLIC_POLICY_MANAGER_ADDRESS.
  */
+/**
+ * Safely stringify data that may contain BigInt values (ethers.js v6 returns
+ * BigInt for many numeric fields). JSON.stringify() throws on raw BigInt, so
+ * we convert them to strings first.
+ */
+function safeJson(data: any, init?: { status?: number }) {
+  const safe = JSON.parse(
+    JSON.stringify(data, (_key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+  return NextResponse.json(safe, init);
+}
+
 interface PolicyManagerAction {
   SettleDelay: 0;
 }
@@ -42,7 +56,7 @@ export async function POST(req: NextRequest) {
     const local = body.mode === "local"; // local Anvil demo vs real testnet pipeline
 
     if (!policyId) {
-      return NextResponse.json({ error: "policyId is required" }, { status: 400 });
+      return safeJson({ error: "policyId is required" }, { status: 400 });
     }
 
     // -----------------------------------------------------------------------
@@ -56,7 +70,7 @@ export async function POST(req: NextRequest) {
       const policyManagerAddress = getAddress("POLICY_MANAGER_ADDRESS");
       const settlerPrivateKey = requireEnv("SETTLER_PRIVATE_KEY");
       if (!policyManagerAddress) {
-        return NextResponse.json(
+        return safeJson(
           { error: "POLICY_MANAGER_ADDRESS not configured in .env.local" },
           { status: 500 }
         );
@@ -75,7 +89,7 @@ export async function POST(req: NextRequest) {
       );
       const receipt = await tx.wait();
       if (!receipt) throw new Error("settleForTesting transaction did not confirm");
-      return NextResponse.json({
+      return safeJson({
         success: true,
         txHash: receipt.hash,
         message: `Settled (local sim). txHash=${receipt.hash}`,
@@ -83,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!reportTxHash) {
-      return NextResponse.json(
+      return safeJson(
         {
           error:
             "report txHash is required. Report the delay on Sepolia first " +
@@ -101,7 +115,7 @@ export async function POST(req: NextRequest) {
     const settlerPrivateKey = requireEnv("SETTLER_PRIVATE_KEY");
 
     if (!policyManagerAddress) {
-      return NextResponse.json(
+      return safeJson(
         { error: "POLICY_MANAGER_ADDRESS not configured in .env.local" },
         { status: 500 }
       );
@@ -114,7 +128,7 @@ export async function POST(req: NextRequest) {
     // Verify the tx exists on Sepolia.
     const reportReceipt = await sepoliaProvider.getTransactionReceipt(reportTxHash);
     if (!reportReceipt) {
-      return NextResponse.json(
+      return safeJson(
         { error: `Transaction ${reportTxHash} not found on Sepolia` },
         { status: 400 }
       );
@@ -129,7 +143,7 @@ export async function POST(req: NextRequest) {
     console.log("Generating proof...");
     const proofResult = await proofBuilder.getProof(reportTxHash);
     if (!proofResult.success || !proofResult.data) {
-      return NextResponse.json(
+      return safeJson(
         { error: `Proof generation failed: ${proofResult.error}` },
         { status: 500 }
       );
@@ -170,9 +184,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, txHash: settleReceipt.hash, message: summary });
+    return safeJson({ success: true, txHash: settleReceipt.hash, message: summary });
   } catch (err: any) {
     console.error("settle API failed:", err);
-    return NextResponse.json({ error: err?.message || "Unknown error" }, { status: 500 });
+    return safeJson({ error: err?.message || "Unknown error" }, { status: 500 });
   }
 }

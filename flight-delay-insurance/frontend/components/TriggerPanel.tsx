@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import type { Address } from "viem";
 
@@ -15,9 +15,14 @@ import WalletConnect from "./WalletConnect";
  *
  * The two-step flow:
  *   1. reportDelay()  — emits FlightDelayReported on Sepolia (user's wallet)
- *   2. "Run Settle Pipeline" — calls the /api/settle server endpoint which
- *      waits for attestation, generates the proof, and submits it to
- *      PolicyManager.execute() on Creditcoin.
+ *   2. "Run Settle Pipeline" — in real mode, kicks off a Netlify Background
+ *      Function (via /api/settle-start) that waits for attestation, generates
+ *      the proof, and submits it to PolicyManager.execute() on Creditcoin.
+ *      The browser polls /api/settle-status until it's done, since real
+ *      Attestcoin attestation can take several minutes — far longer than a
+ *      normal serverless function is allowed to run synchronously.
+ *      In local mode (Anvil), settleForTesting() is instant, so it still
+ *      calls the simple synchronous /api/settle route directly.
  *
  * See docs/technical-documentation.md for the full explanation.
  */
@@ -27,6 +32,8 @@ export default function TriggerPanel() {
   const [delayMinutes, setDelayMinutes] = useState("180");
   const [step, setStep] = useState<"idle" | "reporting" | "reported" | "settling" | "settled">("idle");
   const [settleResult, setSettleResult] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: reportHash, isPending: isReporting, isSuccess: reportConfirmed, writeContract: reportDelay } = useWriteContract();
   const { data: reportReceiptHash } = useWaitForTransactionReceipt({ hash: reportHash });
@@ -36,7 +43,7 @@ export default function TriggerPanel() {
   // uses to fetch the inclusion proof for the block that contains it.
   const reportTxHash = reportReceiptHash?.transactionHash || reportHash;
 
-  const isLoading = isReporting || isSettling;
+  const isLoading = isReporting || isSettling || step === "settling";
 
   const handleReportDelay = async () => {
     setStep("reporting");
@@ -48,6 +55,60 @@ export default function TriggerPanel() {
     });
   };
 
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const statusLabel = (s: string) => {
+    switch (s) {
+      case "queued":
+        return "Queued...";
+      case "started":
+        return "Starting pipeline...";
+      case "waiting_attestation":
+        return "Waiting for Creditcoin to attest the Sepolia block (this can take several minutes)...";
+      case "generating_proof":
+        return "Generating Merkle + continuity proof...";
+      case "settling":
+        return "Submitting proof to PolicyManager.execute()...";
+      default:
+        return s;
+    }
+  };
+
+  const pollStatus = (jobId: string) => {
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/settle-status?jobId=${jobId}`);
+        const data = await res.json();
+
+        if (data.error && res.status === 404) {
+          // Job not written yet — keep polling briefly.
+          return;
+        }
+
+        if (data.status === "done") {
+          stopPolling();
+          setSettleResult(data.message || `Settled. txHash=${data.txHash}`);
+          setJobStatus(null);
+          setStep("settled");
+        } else if (data.status === "error") {
+          stopPolling();
+          setSettleResult(`Error: ${data.error || "Unknown error"}`);
+          setJobStatus(null);
+          setStep("idle");
+        } else {
+          setJobStatus(data.status);
+        }
+      } catch (e) {
+        // Transient network hiccup while polling — keep trying.
+      }
+    }, 4000);
+  };
+
   const handleSettle = async () => {
     if (!reportTxHash) {
       setSettleResult("Report the delay first — need the Sepolia tx hash.");
@@ -55,25 +116,49 @@ export default function TriggerPanel() {
     }
     setStep("settling");
     setSettleResult(null);
+    setJobStatus(null);
+
+    const localMode = process.env.NEXT_PUBLIC_USE_LOCAL_SIM === "true";
 
     try {
-      // Local mode (Anvil, chainId 407150) skips the real proof pipeline and
-      // calls PolicyManager.settleForTesting(); the UI keeps working unchanged.
-      // Set NEXT_PUBLIC_USE_LOCAL_SIM=true in .env.local for the local demo.
-      const localMode = process.env.NEXT_PUBLIC_USE_LOCAL_SIM === "true";
-      const res = await fetch("/api/settle", {
+      if (localMode) {
+        // Local Anvil demo — settleForTesting() is instant, no need for
+        // background handling.
+        const res = await fetch("/api/settle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            policyId,
+            delayMinutes,
+            txHash: reportTxHash,
+            mode: "local",
+          }),
+        });
+        const data = await res.json();
+        setSettleResult(data.message || data.error || JSON.stringify(data));
+        setStep("settled");
+        return;
+      }
+
+      // Real testnet pipeline — kick off the background function and poll
+      // for status, since real attestation can take several minutes.
+      const res = await fetch("/api/settle-start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           policyId,
           delayMinutes,
           txHash: reportTxHash,
-          mode: localMode ? "local" : "real",
         }),
       });
       const data = await res.json();
-      setSettleResult(data.message || data.error || JSON.stringify(data));
-      setStep("settled");
+      if (!res.ok || !data.jobId) {
+        setSettleResult(`Error: ${data.error || "Failed to start settle job"}`);
+        setStep("idle");
+        return;
+      }
+      setJobStatus("queued");
+      pollStatus(data.jobId);
     } catch (e: any) {
       setSettleResult(`Error: ${e.message || "unknown error"}`);
       setStep("idle");
@@ -147,8 +232,14 @@ export default function TriggerPanel() {
           disabled={isLoading || !reportConfirmed}
           className="px-4 py-2 bg-success hover:bg-emerald-600 disabled:opacity-50 rounded-lg font-medium transition"
         >
-          {isSettling ? "Settling..." : "Run Settle Pipeline"}
+          {step === "settling" ? "Settling..." : "Run Settle Pipeline"}
         </button>
+        {jobStatus && (
+          <div className="mt-3 p-3 bg-slate-800/50 rounded-lg text-sm text-blue-300 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            {statusLabel(jobStatus)}
+          </div>
+        )}
         {settleResult && (
           <div className="mt-3 p-3 bg-slate-800/50 rounded-lg text-sm text-green-300">
             <pre className="whitespace-pre-wrap">{settleResult}</pre>

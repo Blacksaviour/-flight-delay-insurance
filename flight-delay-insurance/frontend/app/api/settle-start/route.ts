@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   // Fire the background function — don't await its completion.
   const baseUrl = process.env.URL || "http://localhost:8888";
-  fetch(`${baseUrl}/.netlify/functions/settle-background`, {
+  fetch(`${baseUrl}/settle-background-invoke`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jobId, policyId, delayMinutes, reportTxHash: txHash }),

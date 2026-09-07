@@ -102,4 +102,5 @@ export default async (req: Request) => {
 
 export const config: Config = {
   path: "/settle-background-invoke",
+  background: true,
 };

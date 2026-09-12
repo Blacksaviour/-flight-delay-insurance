@@ -32,6 +32,7 @@ export default function TriggerPanel() {
   const [delayMinutes, setDelayMinutes] = useState("180");
   const [step, setStep] = useState<"idle" | "reporting" | "reported" | "settling" | "settled">("idle");
   const [settleResult, setSettleResult] = useState<string | null>(null);
+  const [settleError, setSettleError] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -39,8 +40,6 @@ export default function TriggerPanel() {
   const { data: reportReceiptHash } = useWaitForTransactionReceipt({ hash: reportHash });
   const { isPending: isSettling } = useWriteContract();
 
-  // The reporter transaction hash once confirmed — this is what the API route
-  // uses to fetch the inclusion proof for the block that contains it.
   const reportTxHash = reportReceiptHash?.transactionHash || reportHash;
 
   const isLoading = isReporting || isSettling || step === "settling";
@@ -69,7 +68,7 @@ export default function TriggerPanel() {
       case "started":
         return "Starting pipeline...";
       case "waiting_attestation":
-        return "Waiting for Creditcoin to attest the Sepolia block (this can take several minutes)...";
+        return "Waiting for Creditcoin to attest the Sepolia block — this can take several minutes...";
       case "generating_proof":
         return "Generating Merkle + continuity proof...";
       case "settling":
@@ -85,10 +84,7 @@ export default function TriggerPanel() {
         const res = await fetch(`/api/settle-status?jobId=${jobId}`);
         const data = await res.json();
 
-        if (data.error && res.status === 404) {
-          // Job not written yet — keep polling briefly.
-          return;
-        }
+        if (data.error && res.status === 404) return;
 
         if (data.status === "done") {
           stopPolling();
@@ -97,13 +93,13 @@ export default function TriggerPanel() {
           setStep("settled");
         } else if (data.status === "error") {
           stopPolling();
-          setSettleResult(`Error: ${data.error || "Unknown error"}`);
+          setSettleError(data.error || "Unknown error");
           setJobStatus(null);
           setStep("idle");
         } else {
           setJobStatus(data.status);
         }
-      } catch (e) {
+      } catch {
         // Transient network hiccup while polling — keep trying.
       }
     }, 4000);
@@ -111,96 +107,94 @@ export default function TriggerPanel() {
 
   const handleSettle = async () => {
     if (!reportTxHash) {
-      setSettleResult("Report the delay first — need the Sepolia tx hash.");
+      setSettleError("Report the delay first — need the Sepolia tx hash.");
       return;
     }
     setStep("settling");
     setSettleResult(null);
+    setSettleError(null);
     setJobStatus(null);
 
     const localMode = process.env.NEXT_PUBLIC_USE_LOCAL_SIM === "true";
 
     try {
       if (localMode) {
-        // Local Anvil demo — settleForTesting() is instant, no need for
-        // background handling.
         const res = await fetch("/api/settle", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            policyId,
-            delayMinutes,
-            txHash: reportTxHash,
-            mode: "local",
-          }),
+          body: JSON.stringify({ policyId, delayMinutes, txHash: reportTxHash, mode: "local" }),
         });
         const data = await res.json();
-        setSettleResult(data.message || data.error || JSON.stringify(data));
+        if (data.error) {
+          setSettleError(data.error);
+        } else {
+          setSettleResult(data.message || JSON.stringify(data));
+        }
         setStep("settled");
         return;
       }
 
-      // Real testnet pipeline — kick off the background function and poll
-      // for status, since real attestation can take several minutes.
       const res = await fetch("/api/settle-start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          policyId,
-          delayMinutes,
-          txHash: reportTxHash,
-        }),
+        body: JSON.stringify({ policyId, delayMinutes, txHash: reportTxHash }),
       });
       const data = await res.json();
       if (!res.ok || !data.jobId) {
-        setSettleResult(`Error: ${data.error || "Failed to start settle job"}`);
+        setSettleError(data.error || "Failed to start settle job");
         setStep("idle");
         return;
       }
       setJobStatus("queued");
       pollStatus(data.jobId);
     } catch (e: any) {
-      setSettleResult(`Error: ${e.message || "unknown error"}`);
+      setSettleError(e.message || "unknown error");
       setStep("idle");
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Attestcoin Demo Panel</h2>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="card-title">Attestcoin Demo Panel</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Real cross-chain proof pipeline</p>
+        </div>
         <WalletConnect />
       </div>
 
       {!isConnected && (
-        <p className="text-slate-400 mb-4">
+        <p className="card-subtitle">
           Connect a wallet to interact with the contracts. You need testnet funds on
           both Creditcoin CC3 and Sepolia.
         </p>
       )}
 
-      <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800">
-        <h3 className="font-semibold mb-3">1. Report Delay (Sepolia)</h3>
-        <p className="text-sm text-slate-400 mb-3">
+      <div className="card">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-creditcoin/15 text-creditcoin text-xs font-bold shrink-0">1</span>
+          <h3 className="font-semibold text-slate-100">Report Delay (Sepolia)</h3>
+        </div>
+        <p className="card-subtitle mb-4">
           Writes the flight-delay fact as a transaction on Sepolia. Creditcoin's
           Attestcoin Protocol will automatically attest this block.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Policy ID</label>
+            <label className="field-label">Policy ID</label>
             <input
               type="number" value={policyId}
               onChange={(e) => setPolicyId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+              className="input"
               min="0"
             />
           </div>
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Delay (minutes)</label>
+            <label className="field-label">Delay (minutes)</label>
             <input
               type="number" value={delayMinutes}
               onChange={(e) => setDelayMinutes(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+              className="input"
               min="0"
             />
           </div>
@@ -208,41 +202,55 @@ export default function TriggerPanel() {
         <button
           onClick={handleReportDelay}
           disabled={isLoading || !isConnected}
-          className="px-4 py-2 bg-creditcoin hover:bg-creditcoin-dark disabled:opacity-50 rounded-lg font-medium transition"
+          className="btn-primary w-full"
         >
           {isReporting ? "Reporting..." : "Report Delay"}
         </button>
         {reportConfirmed && (
-          <p className="mt-3 text-sm text-green-400">
-            Reported! tx: {reportHash?.slice(0, 10)}...
-          </p>
+          <div className="result-box">✓ Reported! tx: {reportHash?.slice(0, 10)}...</div>
         )}
       </div>
 
-      <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800">
-        <h3 className="font-semibold mb-3">2. Generate Proof & Settle (Creditcoin)</h3>
-        <p className="text-sm text-slate-400 mb-3">
-          The server-side pipeline will: wait for Creditcoin to attest the Sepolia
-          block, generate a Merkle + continuity proof via the Attestcoin ProofBuilder,
-          and submit it to <code className="bg-slate-800 px-1 rounded">PolicyManager.execute()</code>
-          where the precompile at 0x0FD2 verifies it before any payout is released.
+      <div className="card">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-creditcoin/15 text-creditcoin text-xs font-bold shrink-0">2</span>
+          <h3 className="font-semibold text-slate-100">Generate Proof & Settle (Creditcoin)</h3>
+        </div>
+        <p className="card-subtitle mb-4">
+          The server-side pipeline waits for Creditcoin to attest the Sepolia block,
+          generates a Merkle + continuity proof via the Attestcoin ProofBuilder, and
+          submits it to{" "}
+          <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs">PolicyManager.execute()</code>
+          {" "}where the precompile at 0x0FD2 verifies it before any payout is released.
         </p>
         <button
           onClick={handleSettle}
           disabled={isLoading || !reportConfirmed}
-          className="px-4 py-2 bg-success hover:bg-emerald-600 disabled:opacity-50 rounded-lg font-medium transition"
+          className="btn-success w-full"
         >
           {step === "settling" ? "Settling..." : "Run Settle Pipeline"}
         </button>
+
         {jobStatus && (
-          <div className="mt-3 p-3 bg-slate-800/50 rounded-lg text-sm text-blue-300 flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-            {statusLabel(jobStatus)}
+          <div className="status-pulse">
+            <span className="inline-block w-2 h-2 rounded-full bg-info animate-pulse shrink-0" />
+            <span className="break-words">{statusLabel(jobStatus)}</span>
           </div>
         )}
+
         {settleResult && (
-          <div className="mt-3 p-3 bg-slate-800/50 rounded-lg text-sm text-green-300">
-            <pre className="whitespace-pre-wrap">{settleResult}</pre>
+          <div className="result-box">
+            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+              {settleResult}
+            </pre>
+          </div>
+        )}
+
+        {settleError && (
+          <div className="error-box">
+            <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+              Error: {settleError}
+            </pre>
           </div>
         )}
       </div>

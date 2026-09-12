@@ -1,11 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 html, body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-slate-950 text-slate-100 antialiased font-sans;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16,185,129,0.06), transparent);
+  background-attachment: fixed;
 }
 
 * {
-  @apply border-slate-800;
+  @apply border-surface-border;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-surface/80 backdrop-blur-sm border border-surface-border p-6 shadow-card;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold text-white tracking-tight;
+  }
+
+  .card-subtitle {
+    @apply text-sm text-slate-400 leading-relaxed;
+  }
+
+  .field-label {
+    @apply block text-xs font-medium uppercase tracking-wide text-slate-500 mb-1.5;
+  }
+
+  .input {
+    @apply w-full px-3.5 py-2.5 bg-slate-900/60 border border-surface-border rounded-xl text-sm
+           text-slate-100 placeholder:text-slate-600
+           focus:outline-none focus:ring-2 focus:ring-creditcoin/50 focus:border-creditcoin/50
+           transition;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+           transition disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-creditcoin hover:bg-creditcoin-dark text-white shadow-glow;
+  }
+
+  .btn-success {
+    @apply btn bg-success hover:bg-success-dark text-white;
+  }
+
+  .btn-secondary {
+    @apply btn bg-slate-800 hover:bg-slate-700 text-slate-100 border border-surface-border;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-active { @apply badge bg-info/15 text-info; }
+  .badge-triggered { @apply badge bg-warning/15 text-warning; }
+  .badge-paid { @apply badge bg-success/15 text-success; }
+  .badge-expired { @apply badge bg-slate-500/15 text-slate-400; }
+  .badge-neutral { @apply badge bg-slate-500/15 text-slate-400; }
+
+  .stat-box {
+    @apply rounded-xl bg-slate-900/50 border border-surface-border p-4 text-center;
+  }
+
+  .stat-label {
+    @apply text-[11px] uppercase tracking-wide text-slate-500 font-medium;
+  }
+
+  .stat-value {
+    @apply text-xl font-bold text-white mt-1;
+  }
+
+  .divider {
+    @apply border-t border-surface-border;
+  }
+
+  .status-pulse {
+    @apply mt-3 p-3.5 rounded-xl bg-info/10 border border-info/20 text-sm text-info
+           flex items-center gap-2.5;
+  }
+
+  .result-box {
+    @apply mt-3 p-3.5 rounded-xl bg-success/10 border border-success/20 text-sm text-success-dark
+           overflow-x-auto;
+  }
+
+  .error-box {
+    @apply mt-3 p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-sm text-danger
+           overflow-x-auto;
+  }
 }

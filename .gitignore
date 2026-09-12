@@ -33,3 +33,6 @@ dist/
 .idea/
 # TypeScript incremental build cache
 tsconfig.tsbuildinfo
+
+# Local Netlify folder
+.netlify

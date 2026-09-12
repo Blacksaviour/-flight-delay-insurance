@@ -63,61 +63,66 @@ export default function LPDashboard() {
 
   if (!isConnected) {
     return (
-      <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800">
-        <h2 className="text-xl font-semibold mb-2">Liquidity Pool</h2>
-        <p className="text-slate-400">Connect your wallet to view LP positions.</p>
+      <div className="card">
+        <h2 className="card-title mb-2">Liquidity Pool</h2>
+        <p className="card-subtitle">Connect your wallet to view LP positions.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800 space-y-4">
-      <h2 className="text-xl font-semibold mb-2">Liquidity Pool (DeFi Track)</h2>
+    <div className="card">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="card-title">Liquidity Pool</h2>
+        <span className="badge-neutral">DeFi Track</span>
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        <div>
-          <p className="text-xs text-slate-500">Pool Balance</p>
-          <p className="text-lg font-semibold">{poolUSDC.toFixed(2)} mUSDC</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <div className="stat-box">
+          <p className="stat-label">Pool Balance</p>
+          <p className="stat-value text-base">{poolUSDC.toFixed(2)}</p>
+          <p className="text-[11px] text-slate-500">mUSDC</p>
         </div>
-        <div>
-          <p className="text-xs text-slate-500">Your LP Tokens</p>
-          <p className="text-lg font-semibold">{lpCount.toFixed(4)} ipLP</p>
+        <div className="stat-box">
+          <p className="stat-label">Your LP Tokens</p>
+          <p className="stat-value text-base">{lpCount.toFixed(4)}</p>
+          <p className="text-[11px] text-slate-500">ipLP</p>
         </div>
-        <div>
-          <p className="text-xs text-slate-500">LP Token Value</p>
-          <p className="text-lg font-semibold">{lpTokenValueUSDC.toFixed(6)} USDC</p>
+        <div className="stat-box">
+          <p className="stat-label">LP Token Value</p>
+          <p className="stat-value text-base">{lpTokenValueUSDC.toFixed(6)}</p>
+          <p className="text-[11px] text-slate-500">USDC</p>
         </div>
-        <div>
-          <p className="text-xs text-slate-500">Your Share</p>
-          <p className="text-lg font-semibold text-success">{myShareUSDC.toFixed(2)} USDC</p>
+        <div className="stat-box border-success/20 bg-success/5">
+          <p className="stat-label">Your Share</p>
+          <p className="stat-value text-base text-success">{myShareUSDC.toFixed(2)}</p>
+          <p className="text-[11px] text-slate-500">USDC</p>
         </div>
       </div>
 
-      <div className="border-t border-slate-800 pt-4 space-y-3">
-        <p className="text-xs text-slate-500">
-          Deposit mUSDC to back policy payouts. Earn premium yield. Absorb payout risk pro-rata.
+      <div className="divider pt-5 space-y-3">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Deposit mUSDC to back policy payouts, earn premium yield, and absorb payout
+          risk pro-rata with other liquidity providers.
         </p>
         <div className="flex gap-2">
           <input
             type="number" value={amountUSDC}
             onChange={(e) => setAmountUSDC(e.target.value)}
-            className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+            className="input flex-1"
             min="0"
           />
           <button
             onClick={handleDeposit}
-            disabled={isPending || isConfirming || !lpBal && depositRaw === 0}
-            className="px-4 py-2 bg-creditcoin hover:bg-creditcoin-dark rounded-lg font-medium transition"
+            disabled={isPending || isConfirming || (!lpBal && depositRaw === 0)}
+            className="btn-primary shrink-0"
           >
             Deposit
           </button>
         </div>
 
         {needsApprove && (
-          <button
-            onClick={handleApprove}
-            className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition"
-          >
+          <button onClick={handleApprove} className="btn-secondary w-full">
             Approve mUSDC for Pool
           </button>
         )}
@@ -126,15 +131,15 @@ export default function LPDashboard() {
           <button
             onClick={handleWithdraw}
             disabled={isPending || isConfirming}
-            className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition"
+            className="btn-secondary w-full"
           >
-            Withdraw All ({lpCount.toFixed(2)} ipLP)
+            Withdraw All · {lpCount.toFixed(2)} ipLP
           </button>
         )}
       </div>
 
       {confirmed && (
-        <p className="text-sm text-green-400">Transaction confirmed.</p>
+        <div className="result-box mt-3">✓ Transaction confirmed.</div>
       )}
     </div>
   );

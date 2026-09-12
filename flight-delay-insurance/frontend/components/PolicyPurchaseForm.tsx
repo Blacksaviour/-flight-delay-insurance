@@ -50,67 +50,73 @@ export default function PolicyPurchaseForm() {
 
   if (!isConnected) {
     return (
-      <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800">
-        <h2 className="text-xl font-semibold mb-2">Buy Flight Delay Policy</h2>
-        <p className="text-slate-400">Connect your wallet to purchase a policy.</p>
+      <div className="card">
+        <h2 className="card-title mb-2">Buy Flight Delay Policy</h2>
+        <p className="card-subtitle">Connect your wallet to purchase a policy.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-slate-900/50 p-6 border border-slate-800">
-      <h2 className="text-xl font-semibold mb-4">Buy Flight Delay Policy</h2>
-      <div className="mb-4 text-sm text-slate-400">
-        Your mUSDC balance: {balanceNum.toFixed(2)}
+    <div className="card">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="card-title">Buy Flight Delay Policy</h2>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="mb-5 text-sm text-slate-400">
+        Your balance:{" "}
+        <span className="text-slate-200 font-semibold">{balanceNum.toFixed(2)} mUSDC</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">
-            Delay Threshold (min)
-          </label>
+          <label className="field-label">Delay Threshold (min)</label>
           <input
             type="number" value={thresholdMinutes}
             onChange={(e) => setThresholdMinutes(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+            className="input"
             min="1"
           />
         </div>
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Payout (USDC)</label>
+          <label className="field-label">Payout (USDC)</label>
           <input
             type="number" value={payoutUSDC}
             onChange={(e) => setPayoutUSDC(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+            className="input"
             min="1"
           />
         </div>
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Premium (USDC)</label>
+          <label className="field-label">Premium (USDC)</label>
           <input
             type="number" value={premiumUSDC}
             onChange={(e) => setPremiumUSDC(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:ring-2 focus:ring-creditcoin"
+            className="input"
             min="1"
           />
         </div>
       </div>
-      {allowanceNum < premiumRaw && (
+
+      <div className="space-y-2.5">
+        {allowanceNum < premiumRaw && (
+          <button
+            onClick={handleApprove} disabled={isLoading}
+            className="btn-secondary w-full"
+          >
+            Approve mUSDC Spending
+          </button>
+        )}
         <button
-          onClick={handleApprove} disabled={isLoading}
-          className="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition"
+          onClick={handlePurchase}
+          disabled={isLoading || balanceNum < Number(premiumUSDC)}
+          className="btn-primary w-full"
         >
-          Approve mUSDC Spending
+          {isLoading ? "Pending..." : `Buy Policy · ${premiumUSDC} USDC premium`}
         </button>
-      )}
-      <button
-        onClick={handlePurchase}
-        disabled={isLoading || balanceNum < Number(premiumUSDC)}
-        className="w-full px-4 py-2 bg-creditcoin hover:bg-creditcoin-dark disabled:opacity-50 rounded-lg font-medium transition"
-      >
-        {isLoading ? "Pending..." : `Buy Policy (${premiumUSDC} USDC premium)`}
-      </button>
+      </div>
+
       {isConfirmed && (
-        <p className="mt-3 text-sm text-green-400">Policy purchased! Transaction confirmed.</p>
+        <div className="result-box">✓ Policy purchased! Transaction confirmed.</div>
       )}
     </div>
   );
